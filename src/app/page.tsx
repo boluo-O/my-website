@@ -5,10 +5,17 @@ export default function Home() {
     useEffect(() => {
         const canvasBox = document.getElementById("canvas-box")
         if (canvasBox) {
-            const canvas = new SeatsCanvas({
+            const seatsCanvas = new SeatsCanvas({
                 canvasBox: canvasBox,
             })
-
+            fetch("demoChartLargeTheatre.json")
+                .then((response) => response.json())
+                .then((data) => {
+                    console.log("data", data)
+                    seatsCanvas.loadDataRoot(data)
+                    seatsCanvas.draw()
+                })
+                .catch((error) => console.error("Error:", error))
             // canvas.draw()
         }
     }, [])
@@ -16,7 +23,7 @@ export default function Home() {
         <div>
             <h1 className="text-3xl font-bold underline">Hello world!</h1>
             <div
-                className="w-[300px] h-[300px] border-2 border-red-500"
+                className="w-[1000px] h-[600px] border-2 border-red-500"
                 id="canvas-box"
             ></div>
         </div>

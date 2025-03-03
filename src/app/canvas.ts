@@ -1,5 +1,13 @@
 "use client"
 
+import { Section } from "./element"
+import { createStore } from "zustand/vanilla"
+
+export const seatsCanvasStore = createStore<{
+    colorMap: Record<string, string>
+}>(() => ({
+    colorMap: {},
+}))
 export class SeatsCanvas {
     scale = 1
     offsetX = 0
@@ -145,14 +153,39 @@ export class SeatsCanvas {
         })
     }
 
-    addElement(element: any) {
-        this.elements.push(element)
+    loadDataRoot(data: any) {
+        const { subChart, categories } = data
+        seatsCanvasStore.setState({
+            colorMap: Object.fromEntries(
+                categories.list.map((v: any) => [
+                    v.key,
+                    { color: v.color, label: v.label },
+                ])
+            ),
+        })
+        const colorMap = seatsCanvasStore.getState().colorMap
+        console.log("colorMap", colorMap)
+        this.loadData(subChart)
+    }
+
+    loadData(chartdata: any) {
+        const { sections, rows, shapes, tables, booths } = chartdata
+
+        this.addElements(sections.map((v) => new Section(v)))
+        // this.addElements(rows.map((v) => new Row(v)))
+        // this.addElements(shapes.map((v) => new Shape(v)))
+        // this.addElements(tables.map((v) => new Table(v)))
+        // this.addElements(booths.map((v) => new Booth(v)))
     }
 
     addElements(elements: any[]) {
         for (const e of elements) {
             this.addElement(e)
         }
+    }
+
+    addElement(element: any) {
+        this.elements.push(element)
     }
 
     autoFit() {
@@ -193,20 +226,22 @@ export class SeatsCanvas {
         this.ctx.translate(this.offsetX, this.offsetY)
         this.ctx.scale(this.scale, this.scale)
 
-        console.log("Canvas")
+        for (const e of this.elements) {
+            e.draw(this.ctx)
+        }
 
-        this.ctx.fillStyle = "red"
-        this.ctx.lineWidth = 5
-        this.ctx.strokeStyle = "red"
-        this.ctx.beginPath()
-        this.ctx.rect(
-            this.canvas.width / 2 - 50,
-            this.canvas.height / 2 - 50,
-            100,
-            100
-        )
-        this.ctx.fill()
-        this.ctx.stroke()
+        // this.ctx.fillStyle = "red"
+        // this.ctx.lineWidth = 5
+        // this.ctx.strokeStyle = "red"
+        // this.ctx.beginPath()
+        // this.ctx.rect(
+        //     this.canvas.width / 2 - 50,
+        //     this.canvas.height / 2 - 50,
+        //     100,
+        //     100
+        // )
+        // this.ctx.fill()
+        // this.ctx.stroke()
 
         this.ctx.restore()
     }
