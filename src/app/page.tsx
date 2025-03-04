@@ -8,7 +8,7 @@ export default function Home() {
             const seatsCanvas = new SeatsCanvas({
                 canvasBox: canvasBox,
             })
-            fetch("demoChartLargeTheatre.json")
+            fetch("demoChartGalaDinner.json")
                 .then((response) => response.json())
                 .then((data) => {
                     console.log("data", data)
@@ -16,7 +16,24 @@ export default function Home() {
                     seatsCanvas.draw()
                 })
                 .catch((error) => console.error("Error:", error))
-            // canvas.draw()
+
+            // fetch("demoChartSmallTheatre.json")
+            //     .then((response) => response.json())
+            //     .then((data) => {
+            //         console.log("data", data)
+            //         seatsCanvas.loadDataRoot(data)
+            //         seatsCanvas.draw()
+            //     })
+            //     .catch((error) => console.error("Error:", error))
+
+            // fetch("demoChartLargeTheatre.json")
+            //     .then((response) => response.json())
+            //     .then((data) => {
+            //         console.log("data", data)
+            //         seatsCanvas.loadDataRoot(data)
+            //         seatsCanvas.draw()
+            //     })
+            //     .catch((error) => console.error("Error:", error))
         }
     }, [])
     return (

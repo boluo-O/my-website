@@ -1,6 +1,6 @@
 "use client"
 
-import { Section } from "./element"
+import { Row, Section, Table } from "./element"
 import { createStore } from "zustand/vanilla"
 
 export const seatsCanvasStore = createStore<{
@@ -172,9 +172,10 @@ export class SeatsCanvas {
         const { sections, rows, shapes, tables, booths } = chartdata
 
         this.addElements(sections.map((v) => new Section(v)))
-        // this.addElements(rows.map((v) => new Row(v)))
+        console.log("this.elements", this.elements)
+        this.addElements(rows.map((v) => new Row(v)))
         // this.addElements(shapes.map((v) => new Shape(v)))
-        // this.addElements(tables.map((v) => new Table(v)))
+        this.addElements(tables.map((v) => new Table(v)))
         // this.addElements(booths.map((v) => new Booth(v)))
     }
 
