@@ -31,7 +31,12 @@ export class Section {
                     this.canvas
                 )
         )
-
+        this.canvas.polygons.push({
+            points: this.points,
+            lineWidth: 10,
+            strokeColor: convertColorToRGBA(this.strokeColor),
+            fillColor: convertColorToRGBA(this.fillColor),
+        })
         // addCircles
     }
 
@@ -55,14 +60,14 @@ export class Section {
         this.drawSelf(ctx)
         this.rows.forEach((row) => row.draw(ctx))
 
-        ctx.save()
-        ctx.lineWidth = 10
-        ctx.beginPath()
-        ctx.arc(this.topLeft.x, this.topLeft.y, 5, 0, Math.PI * 2) // 画一个半径为5的圆
-        ctx.closePath()
-        ctx.fillStyle = "red"
-        ctx.fill()
-        ctx.restore()
+        // ctx.save()
+        // ctx.lineWidth = 10
+        // ctx.beginPath()
+        // ctx.arc(this.topLeft.x, this.topLeft.y, 5, 0, Math.PI * 2) // 画一个半径为5的圆
+        // ctx.closePath()
+        // ctx.fillStyle = "red"
+        // ctx.fill()
+        // ctx.restore()
     }
 }
 export class Table {
@@ -159,7 +164,7 @@ export class Seat {
         this.color =
             seatData.color || colorMap[seatData.categoryKey]?.color || "#ED303D"
         this.origionPoint = seatData?.origionPoint || { x: 0, y: 0 }
-        seatsCanvas.shapeListMap.circle.push({
+        seatsCanvas.circles.push({
             x: this.x + this.origionPoint.x,
             y: this.y + this.origionPoint.y,
             radius: this.radius,
@@ -190,6 +195,6 @@ export class Seat {
             strokeColor: this.color,
             fillColor: this.color,
         })
-        // this.drawText(ctx)
+        this.drawText(ctx)
     }
 }

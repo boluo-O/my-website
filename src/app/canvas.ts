@@ -2,7 +2,11 @@
 
 import { Row, Section, Table } from "./element"
 import { createStore } from "zustand/vanilla"
-import { drawCircle, drawCircleListByWebGL } from "./shape"
+import {
+    drawCircle,
+    drawCircleListByWebGL,
+    drawPolygonListByWebGL,
+} from "./shape"
 
 function createPreciseCircles(canvas: HTMLCanvasElement) {
     const circlesData = [
@@ -189,10 +193,17 @@ function createPreciseCircles(canvas: HTMLCanvasElement) {
     gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, resolution + 2, numInstances)
 }
 
-interface CircleData {
+export interface CircleData {
     x: number
     y: number
     radius: number
+    strokeColor: [number, number, number, number]
+    fillColor: [number, number, number, number]
+    lineWidth?: number
+}
+
+export interface PolygonData {
+    points: { x: number; y: number }[]
     strokeColor: [number, number, number, number]
     fillColor: [number, number, number, number]
     lineWidth?: number
@@ -203,6 +214,7 @@ export const seatsCanvasStore = createStore<{
 }>(() => ({
     colorMap: {},
 }))
+
 export class SeatsCanvas {
     scale = 1
     offsetX = 0
@@ -210,14 +222,12 @@ export class SeatsCanvas {
     isDragging = false
     startX = 0
     startY = 0
-    canvas: HTMLCanvasElement
-    ctx: CanvasRenderingContext2D | WebGL2RenderingContext
+    canvas!: HTMLCanvasElement
+    ctx!: CanvasRenderingContext2D | WebGL2RenderingContext
     elements: any[] = []
-    shapeListMap: {
-        circle: CircleData[]
-    } = {
-        circle: [],
-    }
+    circles: CircleData[] = []
+    polygons: PolygonData[] = []
+    private animationFrameId: number | null = null
 
     constructor({
         canvasBox,
@@ -335,7 +345,7 @@ export class SeatsCanvas {
 
     bindCanvasControl() {
         this.canvas.addEventListener("contextmenu", function (e) {
-            e.preventDefault() // Prevent default right-click menu
+            e.preventDefault()
             return false
         })
         // Handle mouse down event to start dragging
@@ -354,6 +364,7 @@ export class SeatsCanvas {
             if (this.isDragging) {
                 this.offsetX = event.clientX - this.startX // Update offset
                 this.offsetY = event.clientY - this.startY // Update offset
+                console.log("this.offsetX 实时", this.offsetX)
                 this.draw() // Redraw canvas
             }
         })
@@ -388,6 +399,7 @@ export class SeatsCanvas {
             // Update offset and scale
             this.offsetX -= dx
             this.offsetY -= dy
+            console.log("this.offsetX", this.offsetX)
             // Update scale
             this.draw() // Redraw
         })
@@ -409,14 +421,11 @@ export class SeatsCanvas {
     }
 
     loadData(chartdata: any) {
-        const { sections, rows, shapes, tables, booths } = chartdata
+        const { sections, rows, tables } = chartdata
 
         this.addElements(sections.map((v) => new Section(v, this)))
-        console.log("this.elements", this.elements)
         this.addElements(rows.map((v) => new Row(v, this)))
-        // this.addElements(shapes.map((v) => new Shape(v)))
         this.addElements(tables.map((v) => new Table(v, this)))
-        // this.addElements(booths.map((v) => new Booth(v)))
     }
 
     addElements(elements: any[]) {
@@ -461,23 +470,74 @@ export class SeatsCanvas {
         // this.draw()
     }
 
-    draw() {
-        console.log("this.ctx", this.ctx)
-        if (this.ctx instanceof CanvasRenderingContext2D) {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-            this.ctx.save()
-            this.ctx.translate(this.offsetX, this.offsetY)
-            this.ctx.scale(this.scale, this.scale)
+    calculateBounds() {
+        if (this.elements.length === 0) return null
 
-            for (const e of this.elements) {
-                e.draw(this.ctx)
+        let minX = Infinity
+        let minY = Infinity
+        let maxX = -Infinity
+        let maxY = -Infinity
+
+        for (const element of this.elements) {
+            if (element.getBounds) {
+                const bounds = element.getBounds()
+                minX = Math.min(minX, bounds.minX)
+                minY = Math.min(minY, bounds.minY)
+                maxX = Math.max(maxX, bounds.maxX)
+                maxY = Math.max(maxY, bounds.maxY)
             }
-            console.log("shapeListMap", this.shapeListMap)
-            createPreciseCircles(this.canvas)
-
-            this.ctx.restore()
-        } else if (this.ctx instanceof WebGL2RenderingContext) {
-            drawCircleListByWebGL(this.ctx, this.shapeListMap["circle"])
         }
+
+        return {
+            minX,
+            minY,
+            maxX,
+            maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+        }
+    }
+
+    draw() {
+        if (this.animationFrameId) return
+
+        this.animationFrameId = requestAnimationFrame(() => {
+            if (this.ctx instanceof CanvasRenderingContext2D) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+                this.ctx.save()
+                this.ctx.translate(this.offsetX, this.offsetY)
+                this.ctx.scale(this.scale, this.scale)
+
+                for (const e of this.elements) {
+                    e.draw(this.ctx)
+                }
+
+                this.ctx.restore()
+            } else if (this.ctx instanceof WebGL2RenderingContext) {
+                // 清除画布
+                this.ctx.clearColor(0, 0, 0, 0)
+                this.ctx.clear(this.ctx.COLOR_BUFFER_BIT)
+
+                // 先绘制多边形
+                drawPolygonListByWebGL(
+                    this.ctx,
+                    this.polygons,
+                    this.offsetX,
+                    this.offsetY,
+                    this.scale
+                )
+
+                // 然后绘制圆形
+                drawCircleListByWebGL(
+                    this.ctx,
+                    this.circles,
+                    this.offsetX,
+                    this.offsetY,
+                    this.scale
+                )
+            }
+
+            this.animationFrameId = null
+        })
     }
 }
