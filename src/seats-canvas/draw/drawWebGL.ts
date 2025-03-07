@@ -1,67 +1,9 @@
-import { PolygonData } from "./canvas"
-
-// class Circle {
-//     x: number
-//     y: number
-//     radius: number
-//     strokeColor: string
-//     fillColor: string
-
-//     constructor(
-//         x: number,
-//         y: number,
-//         radius: number,
-//         strokeColor: string,
-//         fillColor: string
-//     ) {
-//         this.x = x
-//         this.y = y
-//         this.radius = radius
-//         this.strokeColor = strokeColor
-//         this.fillColor = fillColor
-//     }
-
-//     draw(ctx: CanvasRenderingContext2D) {
-//         ctx.beginPath()
-//         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
-//         ctx.strokeStyle = this.strokeColor
-//         ctx.fillStyle = this.fillColor
-//         ctx.fill()
-//     }
-// }
-interface CircleProps {
-    x: number
-    y: number
-    radius: number
-    strokeColor: string
-    fillColor: string
-    lineWidth?: number
-}
-
-const drawCircleByCanvas = (
-    ctx: CanvasRenderingContext2D,
-    { x, y, radius, strokeColor, fillColor, lineWidth = 10 }: CircleProps
-) => {
-    ctx.beginPath()
-    ctx.arc(x, y, radius, 0, Math.PI * 2)
-    ctx.strokeStyle = strokeColor
-    ctx.fillStyle = fillColor
-    ctx.lineWidth = lineWidth
-    ctx.fill()
-}
-
-export interface CircleData {
-    x: number
-    y: number
-    radius: number
-    strokeColor: [number, number, number, number]
-    fillColor: [number, number, number, number]
-    lineWidth?: number
-}
+import { Circle, Polygon } from "../shapeType"
+import { convertColorToRGBA } from "../../util"
 
 export const drawCircleListByWebGL = (
     gl: WebGL2RenderingContext,
-    circlesData: CircleData[],
+    circlesData: Circle[],
     offsetX: number,
     offsetY: number,
     scale: number = 1.0
@@ -69,6 +11,13 @@ export const drawCircleListByWebGL = (
     if (!gl || circlesData.length === 0) {
         return
     }
+    const _circlesData = circlesData.map((circle) => {
+        return {
+            ...circle,
+            fillColor: convertColorToRGBA(circle.fillColor),
+            strokeColor: convertColorToRGBA(circle.strokeColor),
+        }
+    })
 
     // 保存当前WebGL状态
     const currentProgram = gl.getParameter(gl.CURRENT_PROGRAM)
@@ -163,7 +112,7 @@ export const drawCircleListByWebGL = (
         vertices[(i + 1) * 2 + 1] = Math.sin(angle)
     }
 
-    const numInstances = circlesData.length
+    const numInstances = _circlesData.length
 
     // 准备实例数据
     const instancePositions = new Float32Array(numInstances * 2)
@@ -171,7 +120,7 @@ export const drawCircleListByWebGL = (
     const instanceColors = new Float32Array(numInstances * 4)
     const instanceTypes = new Float32Array(numInstances)
 
-    circlesData.forEach((circle, i) => {
+    _circlesData.forEach((circle, i) => {
         instancePositions[i * 2] = circle.x
         instancePositions[i * 2 + 1] = circle.y
         instanceRadii[i] = circle.radius
@@ -287,27 +236,9 @@ export const drawCircleListByWebGL = (
     gl.deleteShader(fragmentShader)
 }
 
-export const drawCircle = (
-    ctx: CanvasRenderingContext2D | WebGL2RenderingContext,
-    { x, y, radius, strokeColor, fillColor, lineWidth }: CircleProps
-) => {
-    if (ctx instanceof CanvasRenderingContext2D) {
-        drawCircleByCanvas(ctx, {
-            x,
-            y,
-            radius,
-            strokeColor,
-            fillColor,
-            lineWidth,
-        })
-    } else {
-        // 这里可以调用 drawCircleListByWebGL
-    }
-}
-
 export const drawPolygonListByWebGL = (
     gl: WebGL2RenderingContext,
-    polygonsData: PolygonData[],
+    polygonsData: Polygon[],
     offsetX: number,
     offsetY: number,
     scale: number = 1.0
@@ -316,6 +247,13 @@ export const drawPolygonListByWebGL = (
         return
     }
 
+    const _polygonsData = polygonsData.map((polygon) => {
+        return {
+            ...polygon,
+            fillColor: convertColorToRGBA(polygon.fillColor),
+            strokeColor: convertColorToRGBA(polygon.strokeColor),
+        }
+    })
     // 保存当前WebGL状态
     const currentProgram = gl.getParameter(gl.CURRENT_PROGRAM)
     const blendEnabled = gl.getParameter(gl.BLEND)
@@ -411,7 +349,7 @@ export const drawPolygonListByWebGL = (
     const allOffsets: number[] = []
     const allIsStroke: number[] = []
 
-    polygonsData.forEach((polygon) => {
+    _polygonsData.forEach((polygon) => {
         const points = polygon.points
         const lineWidth = polygon.lineWidth || 1
 
@@ -643,353 +581,4 @@ function loadShader(gl: WebGL2RenderingContext, type: number, source: string) {
     }
 
     return shader
-}
-
-// 创建统一的着色器程序
-function createUnifiedShaderProgram(gl: WebGL2RenderingContext) {
-    // 顶点着色器
-    const vertexShaderSource = `#version 300 es
-    // 基础顶点属性
-    in vec2 a_position;     // 顶点位置
-    in vec2 a_offset;       // 位置偏移
-    in vec4 a_fillColor;    // 填充颜色
-    in vec4 a_strokeColor;  // 描边颜色
-    in float a_isStroke;    // 是否是描边
-    in float a_type;        // 图形类型(0=圆形, 1=多边形)
-    in float a_radius;      // 半径(仅用于圆形)
-
-    uniform vec2 u_resolution;
-    uniform vec2 u_offset;
-    uniform float u_scale;
-
-    out vec4 v_fillColor;
-    out vec4 v_strokeColor;
-    out vec2 v_position;
-    out float v_isStroke;
-    out float v_type;
-
-    void main() {
-        v_fillColor = a_fillColor;
-        v_strokeColor = a_strokeColor;
-        v_position = a_position;
-        v_isStroke = a_isStroke;
-        v_type = a_type;
-
-        // 计算最终位置
-        vec2 position;
-        if (v_type < 0.5) { // 圆形
-            position = a_position * a_radius * u_scale;
-        } else { // 多边形
-            position = a_position * u_scale;
-        }
-
-        vec2 finalPosition = (position + a_offset * u_scale + u_offset) / u_resolution;
-        finalPosition = finalPosition * 2.0 - 1.0;
-        gl_Position = vec4(finalPosition.x, -finalPosition.y, 0, 1);
-    }
-`
-
-    // 片元着色器
-    const fragmentShaderSource = `#version 300 es
-    precision highp float;
-    
-    in vec4 v_fillColor;
-    in vec4 v_strokeColor;
-    in vec2 v_position;
-    in float v_isStroke;
-    in float v_type;
-
-    out vec4 outColor;
-
-    void main() {
-        vec4 color = mix(v_fillColor, v_strokeColor, v_isStroke);
-        
-        if (v_type < 0.5) { // 圆形
-            float distance = length(v_position);
-            if (distance > 1.0) {
-                discard;
-            }
-            float alpha = 1.0 - smoothstep(0.9, 1.0, distance);
-            outColor = vec4(color.rgb, color.a * alpha);
-        } else { // 多边形
-            outColor = color;
-        }
-    }
-`
-
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexShaderSource)
-    const fragmentShader = loadShader(
-        gl,
-        gl.FRAGMENT_SHADER,
-        fragmentShaderSource
-    )
-
-    if (!vertexShader || !fragmentShader) return null
-
-    const program = gl.createProgram()!
-    gl.attachShader(program, vertexShader)
-    gl.attachShader(program, fragmentShader)
-    gl.linkProgram(program)
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error("Program link error:", gl.getProgramInfoLog(program))
-        return null
-    }
-
-    return {
-        program,
-        vertexShader,
-        fragmentShader,
-        attribLocations: {
-            position: gl.getAttribLocation(program, "a_position"),
-            offset: gl.getAttribLocation(program, "a_offset"),
-            fillColor: gl.getAttribLocation(program, "a_fillColor"),
-            strokeColor: gl.getAttribLocation(program, "a_strokeColor"),
-            isStroke: gl.getAttribLocation(program, "a_isStroke"),
-            type: gl.getAttribLocation(program, "a_type"),
-            radius: gl.getAttribLocation(program, "a_radius"),
-        },
-        uniformLocations: {
-            resolution: gl.getUniformLocation(program, "u_resolution"),
-            offset: gl.getUniformLocation(program, "u_offset"),
-            scale: gl.getUniformLocation(program, "u_scale"),
-        },
-    }
-}
-
-// 修改绘制函数
-export const drawShapes = (
-    gl: WebGL2RenderingContext,
-    circles: CircleData[],
-    polygons: PolygonData[],
-    offsetX: number,
-    offsetY: number,
-    scale: number = 1.0
-) => {
-    if (!gl || (circles.length === 0 && polygons.length === 0)) {
-        return
-    }
-
-    // 保存当前WebGL状态
-    const currentProgram = gl.getParameter(gl.CURRENT_PROGRAM)
-    const blendEnabled = gl.getParameter(gl.BLEND)
-    const blendSrcRGB = gl.getParameter(gl.BLEND_SRC_RGB)
-    const blendDstRGB = gl.getParameter(gl.BLEND_DST_RGB)
-
-    // 清除所有缓冲区
-    gl.bindBuffer(gl.ARRAY_BUFFER, null)
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
-
-    // 创建着色器程序
-    const shaderInfo = createUnifiedShaderProgram(gl)
-    if (!shaderInfo) return
-
-    // 准备顶点数据
-    const vertices: number[] = []
-    const offsets: number[] = []
-    const fillColors: number[] = []
-    const strokeColors: number[] = []
-    const isStrokes: number[] = []
-    const types: number[] = []
-    const radii: number[] = []
-
-    // 处理圆形数据
-    if (circles.length > 0) {
-        const numSides = 32
-        const circleTemplate: number[] = []
-
-        // 创建单位圆顶点模板
-        circleTemplate.push(0, 0) // 中心点
-        for (let i = 0; i <= numSides; i++) {
-            const angle = (i / numSides) * Math.PI * 2
-            circleTemplate.push(Math.cos(angle), Math.sin(angle))
-        }
-
-        // 为每个圆形添加数据
-        circles.forEach((circle) => {
-            // 添加顶点
-            vertices.push(...circleTemplate)
-
-            // 为每个顶点添加属性
-            for (let i = 0; i < circleTemplate.length / 2; i++) {
-                offsets.push(circle.x, circle.y)
-                fillColors.push(...circle.fillColor)
-                strokeColors.push(...circle.strokeColor)
-                isStrokes.push(0.0)
-                types.push(0.0) // 圆形类型
-                radii.push(circle.radius)
-            }
-        })
-    }
-
-    // 处理多边形数据
-    if (polygons.length > 0) {
-        polygons.forEach((polygon) => {
-            const points = polygon.points
-            const lineWidth = polygon.lineWidth || 1
-
-            // 填充部分
-            for (let i = 1; i < points.length - 1; i++) {
-                // 三角形的三个顶点
-                vertices.push(
-                    points[0].x,
-                    points[0].y,
-                    points[i].x,
-                    points[i].y,
-                    points[i + 1].x,
-                    points[i + 1].y
-                )
-
-                // 为每个顶点添加属性
-                for (let j = 0; j < 3; j++) {
-                    offsets.push(0, 0)
-                    fillColors.push(...polygon.fillColor)
-                    strokeColors.push(...polygon.strokeColor)
-                    isStrokes.push(0.0)
-                    types.push(1.0) // 多边形类型
-                    radii.push(1.0) // 多边形不使用半径
-                }
-            }
-
-            // 描边部分
-            for (let i = 0; i < points.length; i++) {
-                const p1 = points[i]
-                const p2 = points[(i + 1) % points.length]
-
-                // 计算线段方向向量
-                const dx = p2.x - p1.x
-                const dy = p2.y - p1.y
-                const length = Math.sqrt(dx * dx + dy * dy)
-
-                // 计算法向量
-                const nx = (-dy / length) * lineWidth * 0.5
-                const ny = (dx / length) * lineWidth * 0.5
-
-                // 生成描边顶点
-                const v1x = p1.x + nx
-                const v1y = p1.y + ny
-                const v2x = p1.x - nx
-                const v2y = p1.y - ny
-                const v3x = p2.x + nx
-                const v3y = p2.y + ny
-                const v4x = p2.x - nx
-                const v4y = p2.y - ny
-
-                // 添加两个三角形的顶点
-                vertices.push(
-                    v1x,
-                    v1y,
-                    v2x,
-                    v2y,
-                    v3x,
-                    v3y,
-                    v2x,
-                    v2y,
-                    v3x,
-                    v3y,
-                    v4x,
-                    v4y
-                )
-
-                // 为描边顶点添加属性
-                for (let j = 0; j < 6; j++) {
-                    offsets.push(0, 0)
-                    fillColors.push(...polygon.fillColor)
-                    strokeColors.push(...polygon.strokeColor)
-                    isStrokes.push(1.0)
-                    types.push(1.0) // 多边形类型
-                    radii.push(1.0) // 多边形不使用半径
-                }
-            }
-        })
-    }
-
-    // 创建并绑定缓冲区
-    const buffers = {
-        vertex: createBuffer(gl, new Float32Array(vertices)),
-        offset: createBuffer(gl, new Float32Array(offsets)),
-        fillColor: createBuffer(gl, new Float32Array(fillColors)),
-        strokeColor: createBuffer(gl, new Float32Array(strokeColors)),
-        isStroke: createBuffer(gl, new Float32Array(isStrokes)),
-        type: createBuffer(gl, new Float32Array(types)),
-        radius: createBuffer(gl, new Float32Array(radii)),
-    }
-
-    // 使用着色器程序
-    gl.useProgram(shaderInfo.program)
-
-    // 设置顶点属性
-    setVertexAttrib(gl, buffers.vertex, shaderInfo.attribLocations.position, 2)
-    setVertexAttrib(gl, buffers.offset, shaderInfo.attribLocations.offset, 2)
-    setVertexAttrib(
-        gl,
-        buffers.fillColor,
-        shaderInfo.attribLocations.fillColor,
-        4
-    )
-    setVertexAttrib(
-        gl,
-        buffers.strokeColor,
-        shaderInfo.attribLocations.strokeColor,
-        4
-    )
-    setVertexAttrib(
-        gl,
-        buffers.isStroke,
-        shaderInfo.attribLocations.isStroke,
-        1
-    )
-    setVertexAttrib(gl, buffers.type, shaderInfo.attribLocations.type, 1)
-    setVertexAttrib(gl, buffers.radius, shaderInfo.attribLocations.radius, 1)
-
-    // 设置uniform变量
-    gl.uniform2f(
-        shaderInfo.uniformLocations.resolution,
-        gl.canvas.width,
-        gl.canvas.height
-    )
-    gl.uniform2f(shaderInfo.uniformLocations.offset, offsetX, offsetY)
-    gl.uniform1f(shaderInfo.uniformLocations.scale, scale)
-
-    // 启用混合
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-    // 绘制所有图形
-    gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2)
-
-    // 清理资源
-    Object.values(buffers).forEach((buffer) => gl.deleteBuffer(buffer))
-    gl.deleteProgram(shaderInfo.program)
-    gl.deleteShader(shaderInfo.vertexShader)
-    gl.deleteShader(shaderInfo.fragmentShader)
-
-    // 恢复WebGL状态
-    gl.useProgram(currentProgram)
-    if (blendEnabled) {
-        gl.enable(gl.BLEND)
-    } else {
-        gl.disable(gl.BLEND)
-    }
-    gl.blendFunc(blendSrcRGB, blendDstRGB)
-}
-
-// 辅助函数：创建缓冲区
-function createBuffer(gl: WebGL2RenderingContext, data: Float32Array) {
-    const buffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
-    return buffer
-}
-
-// 辅助函数：设置顶点属性
-function setVertexAttrib(
-    gl: WebGL2RenderingContext,
-    buffer: WebGLBuffer | null,
-    location: number,
-    size: number
-) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.enableVertexAttribArray(location)
-    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0)
 }
