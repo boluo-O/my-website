@@ -4,9 +4,9 @@ export default function Home() {
     return (
         <div className="flex flex-col h-screen p-4">
             <header className="mb-6">
-                <h1 className="text-2xl font-bold">Seating Chart Viewer</h1>
+                <h1 className="text-2xl font-bold">Demo Seats Viewer</h1>
                 <p className="text-gray-600">
-                    Select a layout from the thumbnails on the left
+                    Select from the thumbnails on the left
                 </p>
             </header>
 

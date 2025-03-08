@@ -36,18 +36,21 @@ export class SeatsCanvas {
         canvasBox?: HTMLElement | undefined
         type?: CanvasType
     }) {
-        if (type === "2d") {
-            this.initCanvas({ canvasBox })
-        } else if (type === "webgl") {
-            this.initCanvasWebGL({ canvasBox: canvasBox as HTMLElement })
-        }
+        // if (type === "2d") {
+        //     this.initCanvas({ canvasBox })
+        // } else if (type === "webgl") {
+        //     this.initCanvasWebGL({ canvasBox: canvasBox as HTMLElement })
+        // }
+        this.initCanvas({ canvasBox, type })
+        // window.addEventListener("resize", this.handleResize.bind(this))
+        this.bindCanvasControl()
     }
 
     initCanvas({
         canvasBox = undefined,
+        type = "2d",
     }: {
-        width?: number
-        height?: number
+        type?: CanvasType
         canvasBox?: HTMLElement | undefined
     }) {
         const canvas = document.createElement("canvas")
@@ -71,14 +74,16 @@ export class SeatsCanvas {
         canvas.style.width = `${width}px`
         canvas.style.height = `${height}px`
 
-        const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
-        ctx.scale(ratio, ratio)
+        let ctx: CanvasRenderingContext2D | WebGL2RenderingContext
+        if (type === "2d") {
+            ctx = canvas.getContext("2d") as CanvasRenderingContext2D
+            ctx.scale(ratio, ratio)
+        } else {
+            ctx = canvas.getContext("webgl2") as WebGL2RenderingContext
+        }
+
         this.canvas = canvas
         this.ctx = ctx
-
-        // Add resize handler
-        // window.addEventListener("resize", this.handleResize.bind(this))
-        this.bindCanvasControl()
     }
 
     initCanvasWebGL({ canvasBox }: { canvasBox: HTMLElement }) {
@@ -109,35 +114,12 @@ export class SeatsCanvas {
         this.canvas = canvas
         this.ctx = ctx
 
-        // Add resize handler
-        window.addEventListener("resize", this.handleResize.bind(this))
-        this.bindCanvasControl()
-
         this.draw()
     }
 
     private handleResize() {
         if (!this.canvas) return
-
-        // const canvasBox = this.canvas.parentElement
-        // if (!canvasBox) return
-
-        // const width = canvasBox.clientWidth
-        // const height = canvasBox.clientHeight
-
-        // // Update canvas size
-        // const ratio = window.devicePixelRatio * 1.5 || 1
-        // this.canvas.width = width * ratio
-        // this.canvas.height = height * ratio
-        // this.canvas.style.width = `${width}px`
-        // this.canvas.style.height = `${height}px`
-
-        // // Reset high DPI scaling
-        // const ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D
-        // ctx.scale(ratio, ratio)
-
-        // // Redraw using new size
-        // this.autoFit()
+        // todo: resize canvas
     }
 
     bindCanvasControl() {
